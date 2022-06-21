@@ -100,7 +100,7 @@ func EvaluatePartial(black, white uint64) int {
 	blackCandidates := GetCandidates(black, white)
 	whiteCandidates := GetCandidates(white, black)
 	mobilityScore := bits.OnesCount64(blackCandidates) - bits.OnesCount64(whiteCandidates)
-	return mobilityScore + 2*countScore + 4*edgeScore + 8*cornerScore
+	return mobilityScore + 2*countScore + 4*edgeScore + 16*cornerScore
 }
 
 func EvaluateComplete(black, white uint64) int {
@@ -109,10 +109,16 @@ func EvaluateComplete(black, white uint64) int {
 
 func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumScore int) int {
 	if depth == 0 {
+		if bits.OnesCount64(black | white) == 64 {
+			return EvaluateComplete(black, white)
+		}
 		return EvaluatePartial(black, white)
 	}
 	if player == COM {
 		candidates := GetCandidates(white, black)
+		if candidates == 0 {
+			return Evaluate(black, white, depth-1, YOU, minimumScore, maximumScore)
+		}
 		nbits := bits.OnesCount64(candidates)
 		minimalScore := math.MaxInt
 		for i := 0; i < nbits; i++ {
@@ -134,6 +140,9 @@ func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumS
 		return minimalScore
 	} else { // YOU
 		candidates := GetCandidates(black, white)
+		if candidates == 0 {
+			return Evaluate(black, white, depth-1, COM, minimumScore, maximumScore)
+		}
 		nbits := bits.OnesCount64(candidates)
 		maximalScore := math.MinInt
 		for i := 0; i < nbits; i++ {
