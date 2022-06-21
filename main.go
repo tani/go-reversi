@@ -93,40 +93,65 @@ func GetReverse(black, white, position uint64) uint64 {
 	return result
 }
 
-func Evaluate(black, white uint64, n, depth int, a, b float64) float64 {
-	if n == 0 {
-		_ = [64]float64{
-			-3, -4, -1, -1, -1, -1, -4, -3,
-			2, -1, 1, 0, 0, 1, -1, 2,
-			2, -1, 0, 1, 1, 0, -1, 2,
-			2, -1, 0, 1, 1, 0, -1, 2,
-			2, -1, 1, 0, 0, 1, -1, 2,
-			-3, -4, -1, -1, -1, -1, -4, -3,
-			4, -3, 2, 2, 2, 2, -3, 4,
-		}
-		blackCandidates := GetCandidates(black, white)
-		whiteCandidates := GetCandidates(white, black)
-		diff := bits.OnesCount64(blackCandidates) - bits.OnesCount64(whiteCandidates) + 64
-		nedge := bits.OnesCount64(black&EdgeMask) - bits.OnesCount64(white&EdgeMask) + 28
-		ncorner := bits.OnesCount64(black&CornerMask) - bits.OnesCount64(white&CornerMask) + 4
-		return float64(diff+2*nedge+16*ncorner) / (1.0*128 + 2.0*56 + 16.0*8)
-	}
+func EvaluatePartial(black, white uint64) int {
+	positionScore := bits.OnesCount64(black&EdgeMask) - bits.OnesCount64(white&EdgeMask)
+	blackCandidates := GetCandidates(black, white)
+	whiteCandidates := GetCandidates(white, black)
+	mobilityScore := bits.OnesCount64(blackCandidates) - bits.OnesCount64(whiteCandidates)
+	return mobilityScore + 4*positionScore
+}
 
-	candidates := GetCandidates(white, black)
-	m := bits.OnesCount64(candidates)
-	value := math.Inf(-1)
-	for i := 0; i < m; i++ {
-		position := uint64(1) << (63 - bits.LeadingZeros64(candidates))
-		reverse := GetReverse(white, black, position)
-		white := white ^ reverse ^ position
-		black := black ^ reverse
-		value = math.Max(value, -Evaluate(white, black, n-(depth%2), depth+1, -b, -a))
-		a = math.Max(a, value)
-		if a >= b {
-			break
-		}
+func EvaluateComplete(black, white uint64) int {
+	return bits.OnesCount64(black) - bits.OnesCount64(white)
+}
+
+func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumScore int) int {
+	if depth == 0 {
+		return EvaluatePartial(black, white)
 	}
-	return value
+	if player == COM {
+		candidates := GetCandidates(white, black)
+		nbits := bits.OnesCount64(candidates)
+		minimalScore := math.MaxInt
+		for i := 0; i < nbits; i++ {
+			position := uint64(1) << (63 - bits.LeadingZeros64(candidates))
+			reverse := GetReverse(white, black, position)
+			white := white ^ reverse ^ position
+			black := black ^ reverse
+			score := Evaluate(black, white, depth-1, YOU, minimumScore, maximumScore)
+			if score < minimalScore {
+				minimalScore = score
+			}
+			if minimalScore <= minimumScore {
+				break
+			}
+			if minimalScore < maximumScore {
+				maximumScore = minimalScore
+			}
+		}
+		return minimumScore
+	} else { // YOU
+		candidates := GetCandidates(black, white)
+		nbits := bits.OnesCount64(candidates)
+		maximalScore := math.MinInt
+		for i := 0; i < nbits; i++ {
+			position := uint64(1) << (63 - bits.LeadingZeros64(candidates))
+			reverse := GetReverse(black, white, position)
+			white := white ^ reverse
+			black := black ^ reverse ^ position
+			score := Evaluate(black, white, depth-1, COM, minimumScore, maximumScore)
+			if score > maximalScore {
+				maximalScore = score
+			}
+			if maximalScore >= maximumScore {
+				break
+			}
+			if maximalScore > minimumScore {
+				minimumScore = maximalScore
+			}
+		}
+		return maximumScore
+	}
 }
 
 const (
@@ -198,13 +223,13 @@ func (game *Game) Update() error {
 		candidates := GetCandidates(game.white, game.black)
 		bestBlack := game.black
 		bestWhite := game.white
-		bestScore := math.Inf(-1)
+		bestScore := math.MinInt
 		for candidates > 0 {
 			position := uint64(1) << (63 - bits.LeadingZeros64(candidates))
 			reverse := GetReverse(game.white, game.black, position)
 			white := game.white ^ reverse ^ position
 			black := game.black ^ reverse
-			score := Evaluate(white, black, 5, 0, math.Inf(-1), math.Inf(1))
+			score := Evaluate(white, black, 6, YOU, math.MinInt, math.MaxInt)
 			if bestScore < score {
 				bestBlack = black
 				bestWhite = white
