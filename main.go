@@ -96,10 +96,11 @@ func GetReverse(black, white, position uint64) uint64 {
 func EvaluatePartial(black, white uint64) int {
 	edgeScore := bits.OnesCount64(black&EdgeMask) - bits.OnesCount64(white&EdgeMask)
 	cornerScore := bits.OnesCount64(black&CornerMask) - bits.OnesCount64(white&CornerMask)
+	countScore := bits.OnesCount64(black) - bits.OnesCount64(white)
 	blackCandidates := GetCandidates(black, white)
 	whiteCandidates := GetCandidates(white, black)
 	mobilityScore := bits.OnesCount64(blackCandidates) - bits.OnesCount64(whiteCandidates)
-	return mobilityScore + 4*edgeScore + 8*cornerScore
+	return mobilityScore + 2*countScore + 4*edgeScore + 8*cornerScore
 }
 
 func EvaluateComplete(black, white uint64) int {
