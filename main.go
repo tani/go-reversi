@@ -94,11 +94,12 @@ func GetReverse(black, white, position uint64) uint64 {
 }
 
 func EvaluatePartial(black, white uint64) int {
-	positionScore := bits.OnesCount64(black&EdgeMask) - bits.OnesCount64(white&EdgeMask)
+	edgeScore := bits.OnesCount64(black&EdgeMask) - bits.OnesCount64(white&EdgeMask)
+	cornerScore := bits.OnesCount64(black&CornerMask) - bits.OnesCount64(white&CornerMask)
 	blackCandidates := GetCandidates(black, white)
 	whiteCandidates := GetCandidates(white, black)
 	mobilityScore := bits.OnesCount64(blackCandidates) - bits.OnesCount64(whiteCandidates)
-	return mobilityScore + 4*positionScore
+	return mobilityScore + 4*edgeScore + 8*cornerScore
 }
 
 func EvaluateComplete(black, white uint64) int {
@@ -129,7 +130,7 @@ func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumS
 				maximumScore = minimalScore
 			}
 		}
-		return minimumScore
+		return minimalScore
 	} else { // YOU
 		candidates := GetCandidates(black, white)
 		nbits := bits.OnesCount64(candidates)
@@ -150,7 +151,7 @@ func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumS
 				minimumScore = maximalScore
 			}
 		}
-		return maximumScore
+		return maximalScore
 	}
 }
 
@@ -163,6 +164,7 @@ const initialBlack = (uint64(1) << (8*3 + 4)) | (uint64(1) << (8*4 + 3))
 const initialWhite = (uint64(1) << (8*4 + 4)) | (uint64(1) << (8*3 + 3))
 
 type Game struct {
+	searchDepth  int
 	cellSize     int
 	boardSize    int
 	boardMargin  int
@@ -229,7 +231,7 @@ func (game *Game) Update() error {
 			reverse := GetReverse(game.white, game.black, position)
 			white := game.white ^ reverse ^ position
 			black := game.black ^ reverse
-			score := Evaluate(white, black, 6, YOU, math.MinInt, math.MaxInt)
+			score := Evaluate(white, black, game.searchDepth, YOU, math.MinInt, math.MaxInt)
 			if bestScore < score {
 				bestBlack = black
 				bestWhite = white
@@ -277,6 +279,7 @@ func (game *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHe
 
 func main() {
 	game := &Game{
+		searchDepth: 10,
 		cellSize:    50,
 		boardMargin: 50,
 		boardSize:   50 * 8,
