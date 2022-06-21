@@ -3,13 +3,14 @@ package main
 import (
 	"bytes"
 	"embed"
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"image/color"
 	_ "image/png"
 	"math"
 	"math/bits"
 	"sync/atomic"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 //go:embed black.png
@@ -110,6 +111,8 @@ const (
 
 type Game struct {
 	cellSize     int
+	boardSize    int
+	boardMargin  int
 	player       int
 	black, white uint64
 	lock         int64
@@ -122,16 +125,18 @@ func (game *Game) Update() error {
 	defer atomic.StoreInt64(&game.lock, 0)
 	if game.player == YOU {
 		cursorX, cursorY := ebiten.CursorPosition()
-		if !(50 < cursorX && cursorX < 450 && 50 < cursorY && cursorY < 450) {
-			return nil
+		if !(game.boardMargin < cursorX && cursorX < game.boardSize+game.boardMargin) {
+			if !(game.boardMargin < cursorY && cursorY < game.boardMargin+game.boardMargin) {
+				return nil
+			}
 		}
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			candidates := GetCandidates(game.black, game.white)
 			if candidates == 0 {
 				game.player = COM
 			}
-			positionX := (cursorX - 50) / game.cellSize
-			positionY := (cursorY - 50) / game.cellSize
+			positionX := (cursorX - game.boardMargin) / game.cellSize
+			positionY := (cursorY - game.boardMargin) / game.cellSize
 			position := uint64(1) << (positionX + positionY*8)
 			if (position & candidates) > 0 {
 				reverse := GetReverse(game.black, game.white, position)
@@ -166,16 +171,16 @@ func (game *Game) Update() error {
 }
 
 func (game *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DrawRect(screen, float64(45), float64(45), float64(410), float64(410), color.RGBA{0x00, 0xff, 0x00, 0xff})
+	ebitenutil.DrawRect(screen, 0, 0, float64(game.boardSize+game.boardMargin*2), float64(game.boardSize+game.boardMargin*2), color.RGBA{0x00, 0xff, 0x00, 0xff})
 	for i := 0; i <= 8; i++ {
-		ebitenutil.DrawLine(screen, float64(game.cellSize*i+50), 50, float64(game.cellSize*i+50), float64(game.cellSize*8+50), color.RGBA{0x00, 0x00, 0x00, 0xff})
-		ebitenutil.DrawLine(screen, 50, float64(game.cellSize*i+50), float64(game.cellSize*8+50), float64(game.cellSize*i+50), color.RGBA{0x00, 0x00, 0x00, 0xff})
+		ebitenutil.DrawLine(screen, float64(game.cellSize*i+game.boardMargin), float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), color.RGBA{0x00, 0x00, 0x00, 0xff})
+		ebitenutil.DrawLine(screen, float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), float64(game.cellSize*i+game.boardMargin), color.RGBA{0x00, 0x00, 0x00, 0xff})
 	}
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
 			position := uint64(1) << (i + j*8)
 			option := &ebiten.DrawImageOptions{}
-			option.GeoM.Translate(float64(i*50+50), float64(j*50+50))
+			option.GeoM.Translate(float64(i*game.cellSize+game.boardMargin), float64(j*game.cellSize+game.boardMargin))
 			if position&game.black > 0 {
 				screen.DrawImage(blackImg, option)
 				continue
@@ -189,15 +194,17 @@ func (game *Game) Draw(screen *ebiten.Image) {
 }
 
 func (game *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return game.cellSize*8 + 100, game.cellSize*8 + 100
+	return game.boardSize + game.boardMargin*2, game.boardSize + game.boardMargin*2
 }
 
 func main() {
 	game := &Game{
-		cellSize: 50,
-		player:   YOU,
-		black:    (uint64(1) << (8*3 + 4)) | (uint64(1) << (8*4 + 3)),
-		white:    (uint64(1) << (8*4 + 4)) | (uint64(1) << (8*3 + 3)),
+		cellSize:    50,
+		boardMargin: 50,
+		boardSize:   50 * 8,
+		player:      YOU,
+		black:       (uint64(1) << (8*3 + 4)) | (uint64(1) << (8*4 + 3)),
+		white:       (uint64(1) << (8*4 + 4)) | (uint64(1) << (8*3 + 3)),
 	}
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("Hello world")
