@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<script src="wasm_exec.js"></script>
+<script type="module">
+const go = new Go();
+const {instance} = await WebAssembly.instantiateStreaming(fetch("reversi.wasm"), go.importObject);
+go.run(instance);
+</script>
