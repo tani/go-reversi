@@ -105,17 +105,19 @@ func Evaluate(black, white uint64, n, depth int, a, b float64) float64 {
 
 	candidates := GetCandidates(white, black)
 	m := bits.OnesCount64(candidates)
+	value := math.Inf(-1)
 	for i := 0; i < m; i++ {
 		position := uint64(1) << (63 - bits.LeadingZeros64(candidates))
 		reverse := GetReverse(white, black, position)
 		white := white ^ reverse ^ position
 		black := black ^ reverse
-		a = math.Max(a, -Evaluate(white, black, n-(depth%2), depth+1, -b, -a))
+		value = math.Max(value, -Evaluate(white, black, n-(depth%2), depth+1, -b, -a))
+		a = math.Max(a, value)
 		if a >= b {
-			return a
+			break
 		}
 	}
-	return a
+	return value
 }
 
 const (
@@ -186,13 +188,13 @@ func (game *Game) Update() error {
 		candidates := GetCandidates(game.white, game.black)
 		bestBlack := game.black
 		bestWhite := game.white
-		bestScore := 0.0
+		bestScore := math.Inf(-1)
 		for candidates > 0 {
 			position := uint64(1) << (63 - bits.LeadingZeros64(candidates))
 			reverse := GetReverse(game.white, game.black, position)
 			white := game.white ^ reverse ^ position
 			black := game.black ^ reverse
-			score := Evaluate(white, black, 5, 0, 0, 1)
+			score := Evaluate(white, black, 5, 0, math.Inf(-1), math.Inf(1))
 			if bestScore < score {
 				bestBlack = black
 				bestWhite = white
