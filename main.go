@@ -15,6 +15,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -140,7 +141,13 @@ func (game *Game) Update() error {
 		return nil
 	}
 	defer atomic.StoreInt64(&game.lock, 0)
+
 	cursorX, cursorY := ebiten.CursorPosition()
+
+	ids := inpututil.AppendJustPressedTouchIDs([]ebiten.TouchID{})
+	if len(ids) != 0 {
+		cursorX, cursorY = ebiten.TouchPosition(ids[0])
+	}
 
 	if game.boardMargin+340 < cursorX && cursorX < game.boardMargin+400 {
 		if 15 < cursorY && cursorY < 35 {
