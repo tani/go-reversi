@@ -155,6 +155,7 @@ func (game *Game) Update() error {
 			if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) || len(ids) != 0 {
 				game.black = initialBlack
 				game.white = initialWhite
+				game.player = YOU
 				return nil
 			}
 		}
