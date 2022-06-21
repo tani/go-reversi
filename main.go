@@ -95,6 +95,15 @@ func GetReverse(black, white, position uint64) uint64 {
 
 func Evaluate(black, white uint64, n, depth int, a, b float64) float64 {
 	if n == 0 {
+		_ = [64]float64{
+			-3, -4, -1, -1, -1, -1, -4, -3,
+			2, -1, 1, 0, 0, 1, -1, 2,
+			2, -1, 0, 1, 1, 0, -1, 2,
+			2, -1, 0, 1, 1, 0, -1, 2,
+			2, -1, 1, 0, 0, 1, -1, 2,
+			-3, -4, -1, -1, -1, -1, -4, -3,
+			4, -3, 2, 2, 2, 2, -3, 4,
+		}
 		blackCandidates := GetCandidates(black, white)
 		whiteCandidates := GetCandidates(white, black)
 		diff := bits.OnesCount64(blackCandidates) - bits.OnesCount64(whiteCandidates) + 64
