@@ -100,7 +100,7 @@ func Evaluate(black, white uint64, n, depth int, a, b float64) float64 {
 		diff := bits.OnesCount64(blackCandidates) - bits.OnesCount64(whiteCandidates) + 64
 		nedge := bits.OnesCount64(black&EdgeMask) - bits.OnesCount64(white&EdgeMask) + 28
 		ncorner := bits.OnesCount64(black&CornerMask) - bits.OnesCount64(white&CornerMask) + 4
-		return float64(diff+4*nedge+8*ncorner) / (1.0*128 + 4.0*56 + 8.0*8)
+		return float64(diff+2*nedge+16*ncorner) / (1.0*128 + 2.0*56 + 16.0*8)
 	}
 
 	candidates := GetCandidates(white, black)
