@@ -1,8 +1,12 @@
+// (C) 2022 TANIGUCHI Masaya
+// https://git.io/mit-license
+
 package main
 
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"image/color"
 	_ "image/png"
 	"math"
@@ -11,17 +15,27 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/text"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/opentype"
 )
 
-//go:embed black.png
-//go:embed white.png
+//go:embed assets/*
 var assets embed.FS
 
 var blackImg, whiteImg *ebiten.Image
+var fontFace font.Face
 
 func init() {
-	blackBin, _ := assets.ReadFile("black.png")
-	whiteBin, _ := assets.ReadFile("white.png")
+	fontBin, _ := assets.ReadFile("assets/PressStart2P-Regular.ttf")
+	fontTT, _ := opentype.Parse(fontBin)
+	fontFace, _ = opentype.NewFace(fontTT, &opentype.FaceOptions{
+		DPI:     72,
+		Size:    10,
+		Hinting: font.HintingFull,
+	})
+	blackBin, _ := assets.ReadFile("assets/black.png")
+	whiteBin, _ := assets.ReadFile("assets/white.png")
 	blackImg, _, _ = ebitenutil.NewImageFromReader(bytes.NewReader(blackBin))
 	whiteImg, _, _ = ebitenutil.NewImageFromReader(bytes.NewReader(whiteBin))
 }
@@ -109,6 +123,9 @@ const (
 	COM
 )
 
+const initialBlack = (uint64(1) << (8*3 + 4)) | (uint64(1) << (8*4 + 3))
+const initialWhite = (uint64(1) << (8*4 + 4)) | (uint64(1) << (8*3 + 3))
+
 type Game struct {
 	cellSize     int
 	boardSize    int
@@ -123,7 +140,24 @@ func (game *Game) Update() error {
 		return nil
 	}
 	defer atomic.StoreInt64(&game.lock, 0)
+	cursorX, cursorY := ebiten.CursorPosition()
+
+	if game.boardMargin+340 < cursorX && cursorX < game.boardMargin+400 {
+		if 15 < cursorY && cursorY < 35 {
+			if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+				game.black = initialBlack
+				game.white = initialWhite
+				return nil
+			}
+		}
+	}
+
 	if game.player == YOU {
+		candidates := GetCandidates(game.black, game.white)
+		if candidates == 0 {
+			game.player = COM
+			return nil
+		}
 		cursorX, cursorY := ebiten.CursorPosition()
 		if !(game.boardMargin < cursorX && cursorX < game.boardSize+game.boardMargin) {
 			if !(game.boardMargin < cursorY && cursorY < game.boardMargin+game.boardMargin) {
@@ -131,10 +165,6 @@ func (game *Game) Update() error {
 			}
 		}
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			candidates := GetCandidates(game.black, game.white)
-			if candidates == 0 {
-				game.player = COM
-			}
 			positionX := (cursorX - game.boardMargin) / game.cellSize
 			positionY := (cursorY - game.boardMargin) / game.cellSize
 			position := uint64(1) << (positionX + positionY*8)
@@ -173,9 +203,13 @@ func (game *Game) Update() error {
 func (game *Game) Draw(screen *ebiten.Image) {
 	ebitenutil.DrawRect(screen, 0, 0, float64(game.boardSize+game.boardMargin*2), float64(game.boardSize+game.boardMargin*2), color.RGBA{0x00, 0xff, 0x00, 0xff})
 	for i := 0; i <= 8; i++ {
-		ebitenutil.DrawLine(screen, float64(game.cellSize*i+game.boardMargin), float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), color.RGBA{0x00, 0x00, 0x00, 0xff})
-		ebitenutil.DrawLine(screen, float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), float64(game.cellSize*i+game.boardMargin), color.RGBA{0x00, 0x00, 0x00, 0xff})
+		ebitenutil.DrawLine(screen, float64(game.cellSize*i+game.boardMargin), float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), color.Black)
+		ebitenutil.DrawLine(screen, float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), float64(game.cellSize*i+game.boardMargin), color.Black)
 	}
+	msg := fmt.Sprintf("BLACK: %d WHITE: %d", bits.OnesCount64(game.black), bits.OnesCount64(game.white))
+	text.Draw(screen, msg, fontFace, game.boardMargin, 30, color.Black)
+	ebitenutil.DrawRect(screen, float64(game.boardMargin+340), 15, 60, 20, color.Black)
+	text.Draw(screen, "RESET", fontFace, game.boardMargin+345, 30, color.RGBA{0x00, 0xff, 0x00, 0xff})
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
 			position := uint64(1) << (i + j*8)
@@ -203,8 +237,8 @@ func main() {
 		boardMargin: 50,
 		boardSize:   50 * 8,
 		player:      YOU,
-		black:       (uint64(1) << (8*3 + 4)) | (uint64(1) << (8*4 + 3)),
-		white:       (uint64(1) << (8*4 + 4)) | (uint64(1) << (8*3 + 3)),
+		black:       initialBlack,
+		white:       initialWhite,
 	}
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("Hello world")
