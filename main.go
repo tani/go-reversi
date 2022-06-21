@@ -15,7 +15,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -144,14 +143,14 @@ func (game *Game) Update() error {
 
 	cursorX, cursorY := ebiten.CursorPosition()
 
-	ids := inpututil.AppendJustPressedTouchIDs([]ebiten.TouchID{})
+	ids := ebiten.AppendTouchIDs([]ebiten.TouchID{})
 	if len(ids) != 0 {
 		cursorX, cursorY = ebiten.TouchPosition(ids[0])
 	}
 
 	if game.boardMargin+340 < cursorX && cursorX < game.boardMargin+400 {
 		if 15 < cursorY && cursorY < 35 {
-			if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) || len(ids) != 0 {
 				game.black = initialBlack
 				game.white = initialWhite
 				return nil
@@ -165,13 +164,14 @@ func (game *Game) Update() error {
 			game.player = COM
 			return nil
 		}
-		cursorX, cursorY := ebiten.CursorPosition()
+
 		if !(game.boardMargin < cursorX && cursorX < game.boardSize+game.boardMargin) {
 			if !(game.boardMargin < cursorY && cursorY < game.boardMargin+game.boardMargin) {
 				return nil
 			}
 		}
-		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) || len(ids) != 0 {
 			positionX := (cursorX - game.boardMargin) / game.cellSize
 			positionY := (cursorY - game.boardMargin) / game.cellSize
 			position := uint64(1) << (positionX + positionY*8)
