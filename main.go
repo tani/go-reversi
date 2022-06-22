@@ -107,21 +107,21 @@ func GetBlankNeiborhood(black, white uint64) uint64 {
 	return black
 }
 
-func GetScore(black, white uint64) int {
+func EvaluateShallow(black, white uint64) int {
 	patternScore := PatternCount(black) - PatternCount(white)
 	blankScore := bits.OnesCount64(GetBlankNeiborhood(black, white)) - bits.OnesCount64(GetBlankNeiborhood(white, black))
 	mobilityScore := bits.OnesCount64(GetCandidates(black, white)) - bits.OnesCount64(GetCandidates(white, black))
 	return 2*mobilityScore + 4*blankScore + 8*patternScore
 }
 
-func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumScore int) int {
+func EvaluateDeep(black, white uint64, depth int, player int, minimumScore, maximumScore int) int {
 	if depth == 0 {
-		return GetScore(black, white)
+		return EvaluateShallow(black, white)
 	}
 	if player == COM {
 		candidates := GetCandidates(white, black)
 		if candidates == 0 {
-			return Evaluate(black, white, depth-1, YOU, minimumScore, maximumScore)
+			return EvaluateDeep(black, white, depth-1, YOU, minimumScore, maximumScore)
 		}
 		nbits := bits.OnesCount64(candidates)
 		minimalScore := math.MaxInt
@@ -130,7 +130,7 @@ func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumS
 			reverse := GetReverse(white, black, position)
 			white := white ^ reverse ^ position
 			black := black ^ reverse
-			minimalScore = Min(minimalScore, Evaluate(black, white, depth-1, YOU, minimumScore, maximumScore))
+			minimalScore = Min(minimalScore, EvaluateDeep(black, white, depth-1, YOU, minimumScore, maximumScore))
 			if minimalScore <= minimumScore {
 				break
 			}
@@ -140,7 +140,7 @@ func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumS
 	} else { // YOU
 		candidates := GetCandidates(black, white)
 		if candidates == 0 {
-			return Evaluate(black, white, depth-1, COM, minimumScore, maximumScore)
+			return EvaluateDeep(black, white, depth-1, COM, minimumScore, maximumScore)
 		}
 		nbits := bits.OnesCount64(candidates)
 		maximalScore := math.MinInt
@@ -149,7 +149,7 @@ func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumS
 			reverse := GetReverse(black, white, position)
 			white := white ^ reverse
 			black := black ^ reverse ^ position
-			maximalScore = Max(maximalScore, Evaluate(black, white, depth-1, COM, minimumScore, maximumScore))
+			maximalScore = Max(maximalScore, EvaluateDeep(black, white, depth-1, COM, minimumScore, maximumScore))
 			if maximalScore >= maximumScore {
 				break
 			}
@@ -237,7 +237,7 @@ func (game *Game) Update() error {
 			white := game.white ^ reverse ^ position
 			black := game.black ^ reverse
 			score := 0
-			score = Evaluate(white, black, game.searchDepth, YOU, math.MinInt, math.MaxInt)
+			score = EvaluateDeep(white, black, game.searchDepth, YOU, math.MinInt, math.MaxInt)
 			if bestScore < score {
 				bestBlack = black
 				bestWhite = white
@@ -258,7 +258,7 @@ func (game *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawLine(screen, float64(game.cellSize*i+game.boardMargin), float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), color.Black)
 		ebitenutil.DrawLine(screen, float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), float64(game.cellSize*i+game.boardMargin), color.Black)
 	}
-	score := GetScore(game.black, game.white)
+	score := EvaluateShallow(game.black, game.white)
 	msg := fmt.Sprintf("BLACK: %d WHITE: %d (%d)", bits.OnesCount64(game.black), bits.OnesCount64(game.white), Max(score, -999))
 	text.Draw(screen, msg, fontFace, game.boardMargin, 30, color.Black)
 	ebitenutil.DrawRect(screen, float64(game.boardMargin+340), 15, 60, 20, color.Black)
@@ -286,7 +286,7 @@ func (game *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHe
 
 func main() {
 	game := &Game{
-		searchDepth: 10,
+		searchDepth: 12,
 		cellSize:    50,
 		boardMargin: 50,
 		boardSize:   50 * 8,
