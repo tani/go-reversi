@@ -92,9 +92,19 @@ const Edg10 = 0 |
 	uint64(0b00000000<<(8*1)) |
 	uint64(0b00000000<<(8*0))
 
-const Cor2x5 = 0 |
-	uint64(0b11111000<<(8*7)) |
-	uint64(0b11111000<<(8*6)) |
+const Cor2x1 = 0 |
+	uint64(0b11000000<<(8*7)) |
+	uint64(0b00000000<<(8*6)) |
+	uint64(0b00000000<<(8*5)) |
+	uint64(0b00000000<<(8*4)) |
+	uint64(0b00000000<<(8*3)) |
+	uint64(0b00000000<<(8*2)) |
+	uint64(0b00000000<<(8*1)) |
+	uint64(0b00000000<<(8*0))
+
+const Cor1x2 = 0 |
+	uint64(0b10000000<<(8*7)) |
+	uint64(0b10000000<<(8*6)) |
 	uint64(0b00000000<<(8*5)) |
 	uint64(0b00000000<<(8*4)) |
 	uint64(0b00000000<<(8*3)) |
@@ -112,26 +122,6 @@ const Cor3x3 = 0 |
 	uint64(0b00000000<<(8*1)) |
 	uint64(0b00000000<<(8*0))
 
-const Corners = 0 |
-	uint64(0b10000001<<(8*7)) |
-	uint64(0b00000000<<(8*6)) |
-	uint64(0b00000000<<(8*5)) |
-	uint64(0b00000000<<(8*4)) |
-	uint64(0b00000000<<(8*3)) |
-	uint64(0b00000000<<(8*2)) |
-	uint64(0b00000000<<(8*1)) |
-	uint64(0b10000001<<(8*0))
-
-const Edges = 0 |
-	uint64(0b01111110<<(8*7)) |
-	uint64(0b10000001<<(8*6)) |
-	uint64(0b10000001<<(8*5)) |
-	uint64(0b10000001<<(8*4)) |
-	uint64(0b10000001<<(8*3)) |
-	uint64(0b10000001<<(8*2)) |
-	uint64(0b10000001<<(8*1)) |
-	uint64(0b01111110<<(8*0))
-
 const Null = 0 |
 	uint64(0b00000000<<(8*7)) |
 	uint64(0b00000000<<(8*6)) |
@@ -142,20 +132,21 @@ const Null = 0 |
 	uint64(0b00000000<<(8*1)) |
 	uint64(0b00000000<<(8*0))
 
-func CountPattern(board uint64) int {
+func PatternCount(board uint64) int {
 	c := 0
 	for i := 0; i < 4; i++ {
 		c += IfThenElse(board&Diag4 == Diag4, 1, 0)
-		c += IfThenElse(board&Diag5 == Diag5, 2, 0)
-		c += IfThenElse(board&Diag6 == Diag6, 3, 0)
-		c += IfThenElse(board&Diag7 == Diag7, 2, 0)
-		c += IfThenElse(board&Diag8 == Diag8, 2, 0)
+		c += IfThenElse(board&Diag5 == Diag5, 1, 0)
+		c += IfThenElse(board&Diag6 == Diag6, 1, 0)
+		c += IfThenElse(board&Diag7 == Diag7, 1, 0)
+		c += IfThenElse(board&Diag8 == Diag8, 1, 0)
 		c += IfThenElse(board&Hol2 == Hol2, 1, 0)
-		c += IfThenElse(board&Hol3 == Hol3, 2, 0)
-		c += IfThenElse(board&Hol4 == Hol4, 3, 0)
-		c += IfThenElse(board&Edg10 == Edg10, 4, 0)
-		c += IfThenElse(board&Cor2x5 == Cor2x5, 4, 0)
-		c += IfThenElse(board&Cor3x3 == Cor3x3, 4, 0)
+		c += IfThenElse(board&Hol3 == Hol3, 1, 0)
+		c += IfThenElse(board&Hol4 == Hol4, 1, 0)
+		c += IfThenElse(board&Edg10 == Edg10, 1, 0)
+		c += IfThenElse(board&Cor2x1 == Cor2x1, 1, 0)
+		c += IfThenElse(board&Cor1x2 == Cor1x2, 1, 0)
+		c += IfThenElse(board&Cor3x3 == Cor3x3, 1, 0)
 		board = bits.Reverse64(bits.ReverseBytes64(board))
 	}
 	return c

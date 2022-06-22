@@ -73,7 +73,7 @@ func GetReverse(black, white, position uint64) uint64 {
 		white & VerticalMask,
 		white & HorizontalMask & VerticalMask,
 	}
-	diff := [4]uint64{1, 7, 8, 9}
+	diff := [4]int{1, 7, 8, 9}
 	result := uint64(0)
 	for i := 0; i < 4; i++ {
 		pattern1 := mask[i] & (black << diff[i])
@@ -91,18 +91,32 @@ func GetReverse(black, white, position uint64) uint64 {
 	return result
 }
 
-func EvaluatePartial(black, white uint64) int {
-	patternScore := CountPattern(black)
-	edgeScore := bits.OnesCount64(black&Edges) - bits.OnesCount64(white&Edges)
-	cornerScore := bits.OnesCount64(black&Corners) - bits.OnesCount64(white&Corners)
-	countScore := bits.OnesCount64(black) - bits.OnesCount64(white)
+func GetBlankNeiborhood(black, white uint64) uint64 {
+	blank := uint64(0)
+	mask := [4]uint64{
+		HorizontalMask,
+		HorizontalMask & VerticalMask,
+		VerticalMask,
+		HorizontalMask & VerticalMask,
+	}
+	diff := [4]int{1, 7, 8, 9}
+	for i := 0; i < 4; i++ {
+		blank |= ((mask[i] & black) << diff[i]) & ^(black | white)
+		blank |= ((mask[i] & black) >> diff[i]) & ^(black | white)
+	}
+	return black
+}
+
+func GetScore(black, white uint64) int {
+	patternScore := PatternCount(black) - PatternCount(white)
+	blankScore := bits.OnesCount64(GetBlankNeiborhood(black, white)) - bits.OnesCount64(GetBlankNeiborhood(white, black))
 	mobilityScore := bits.OnesCount64(GetCandidates(black, white)) - bits.OnesCount64(GetCandidates(white, black))
-	return mobilityScore + 2*countScore + 4*edgeScore + 8*cornerScore + 16*patternScore
+	return 2*mobilityScore + 4*blankScore + 8*patternScore
 }
 
 func Evaluate(black, white uint64, depth int, player int, minimumScore, maximumScore int) int {
 	if depth == 0 {
-		return EvaluatePartial(black, white)
+		return GetScore(black, white)
 	}
 	if player == COM {
 		candidates := GetCandidates(white, black)
@@ -159,7 +173,6 @@ type Game struct {
 	boardSize    int
 	boardMargin  int
 	player       int
-	score        int
 	black, white uint64
 	lock         int64
 }
@@ -234,7 +247,6 @@ func (game *Game) Update() error {
 		}
 		game.black = bestBlack
 		game.white = bestWhite
-		game.score = bestScore
 		game.player = YOU
 	}
 	return nil
@@ -246,7 +258,8 @@ func (game *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawLine(screen, float64(game.cellSize*i+game.boardMargin), float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), color.Black)
 		ebitenutil.DrawLine(screen, float64(game.boardMargin), float64(game.cellSize*i+game.boardMargin), float64(game.boardSize+game.boardMargin), float64(game.cellSize*i+game.boardMargin), color.Black)
 	}
-	msg := fmt.Sprintf("BLACK: %d WHITE: %d (%d)", bits.OnesCount64(game.black), bits.OnesCount64(game.white), Max(game.score, -999))
+	score := GetScore(game.black, game.white)
+	msg := fmt.Sprintf("BLACK: %d WHITE: %d (%d)", bits.OnesCount64(game.black), bits.OnesCount64(game.white), Max(score, -999))
 	text.Draw(screen, msg, fontFace, game.boardMargin, 30, color.Black)
 	ebitenutil.DrawRect(screen, float64(game.boardMargin+340), 15, 60, 20, color.Black)
 	text.Draw(screen, "RESET", fontFace, game.boardMargin+345, 30, color.RGBA{0x00, 0xff, 0x00, 0xff})
@@ -277,7 +290,6 @@ func main() {
 		cellSize:    50,
 		boardMargin: 50,
 		boardSize:   50 * 8,
-		score:       0,
 		player:      YOU,
 		black:       initialBlack,
 		white:       initialWhite,
