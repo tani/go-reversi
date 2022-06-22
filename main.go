@@ -286,7 +286,7 @@ func (game *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHe
 
 func main() {
 	game := &Game{
-		searchDepth: 12,
+		searchDepth: 10,
 		cellSize:    50,
 		boardMargin: 50,
 		boardSize:   50 * 8,
